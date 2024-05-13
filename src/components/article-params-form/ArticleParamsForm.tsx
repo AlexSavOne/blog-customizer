@@ -15,7 +15,8 @@ import articleStyles from './ArticleParamsForm.module.scss';
 import { RadioGroup } from '../radio-group/RadioGroup';
 import { Select } from '../select';
 import { Separator } from '../separator';
-import { Text } from '../text';
+import clsx from 'clsx';
+import { useOverlayClose } from './hooks/useOverlayClose';
 
 interface ArticleParamsFormProps {
 	applyChanges: (newState: ArticleStateType) => void;
@@ -26,65 +27,49 @@ export const ArticleParamsForm: React.FC<ArticleParamsFormProps> = ({
 }) => {
 	const [isAsideOpen, setIsAsideOpen] = useState(false);
 	const asideRef = useRef<HTMLDivElement>(null);
-	const [selectedFontFamily, setSelectedFontFamily] = useState<OptionType>(
-		fontFamilyOptions[0]
-	);
-	const [selectedFontColor, setSelectedFontColor] = useState<OptionType>(
-		fontColors[0]
-	);
-	const [selectedBackgroundColor, setSelectedBackgroundColor] =
-		useState<OptionType>(backgroundColors[0]);
-	const [selectedContentWidth, setSelectedContentWidth] = useState<OptionType>(
-		contentWidthArr[0]
-	);
-	const [selectedFontSize, setSelectedFontSize] = useState<OptionType>(
-		fontSizeOptions[0]
-	);
+	const [formState, setFormState] =
+		useState<ArticleStateType>(defaultArticleState);
 
-	const applyChangesHandler = () => {
-		applyChanges({
-			fontFamilyOption: selectedFontFamily!,
-			fontColor: selectedFontColor!,
-			backgroundColor: selectedBackgroundColor!,
-			contentWidth: selectedContentWidth!,
-			fontSizeOption: selectedFontSize!,
-		});
+	const applyChangesHandler = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		applyChanges(formState);
+	};
+
+	const resetForm = () => {
+		setFormState(defaultArticleState);
+		applyChanges(defaultArticleState);
 	};
 
 	const toggleAside = () => {
 		setIsAsideOpen((prevState) => !prevState);
 	};
 
-	const handleClickOutside = (event: MouseEvent) => {
-		if (
-			asideRef.current &&
-			!asideRef.current.contains(event.target as HTMLElement)
-		) {
-			setIsAsideOpen(false);
-		}
+	const handleClickOutside = () => {
+		setIsAsideOpen(false);
 	};
 
-	const handleKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Escape') {
-			setIsAsideOpen(false);
-		}
-	};
+	useOverlayClose({
+		isOpen: isAsideOpen,
+		rootRef: asideRef,
+		onClose: handleClickOutside,
+	});
 
-	const resetForm = () => {
-		setSelectedFontFamily(fontFamilyOptions[0]);
-		setSelectedFontColor(fontColors[0]);
-		setSelectedBackgroundColor(backgroundColors[0]);
-		setSelectedContentWidth(contentWidthArr[0]);
-		setSelectedFontSize(fontSizeOptions[0]);
-
-		applyChanges(defaultArticleState);
+	const handleChange = (type: keyof ArticleStateType, value: OptionType) => {
+		setFormState({
+			...formState,
+			[type]: value,
+		});
 	};
 
 	useEffect(() => {
-		document.addEventListener('mousedown', handleClickOutside);
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') {
+				setIsAsideOpen(false);
+			}
+		};
+
 		document.addEventListener('keydown', handleKeyDown);
 		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
 			document.removeEventListener('keydown', handleKeyDown);
 		};
 	}, []);
@@ -94,52 +79,46 @@ export const ArticleParamsForm: React.FC<ArticleParamsFormProps> = ({
 			<ArrowButton onClick={toggleAside} isAsideOpen={isAsideOpen} />
 			<aside
 				ref={asideRef}
-				className={`${articleStyles.container} ${
-					isAsideOpen ? articleStyles.container_open : ''
-				}`}>
-				<form className={articleStyles.form}>
-					<Text size={31} dynamicLite weight={800} uppercase>
-						Задайте параметры
-					</Text>
+				className={clsx(articleStyles.container, {
+					[articleStyles.container_open]: isAsideOpen,
+				})}>
+				<form className={articleStyles.form} onSubmit={applyChangesHandler}>
+					<div className={articleStyles.title}>Задайте параметры</div>
 					<Select
 						options={fontFamilyOptions}
-						selected={selectedFontFamily}
-						onChange={(option) => setSelectedFontFamily(option)}
+						selected={formState.fontFamilyOption}
+						onChange={(option) => handleChange('fontFamilyOption', option)}
 						title='Шрифт'
 					/>
 					<RadioGroup
 						name='font-size'
 						title='Размер шрифта'
 						options={fontSizeOptions}
-						selected={selectedFontSize}
-						onChange={(option) => setSelectedFontSize(option)}
+						selected={formState.fontSizeOption}
+						onChange={(option) => handleChange('fontSizeOption', option)}
 					/>
 					<Select
 						options={fontColors}
-						selected={selectedFontColor}
-						onChange={(option) => setSelectedFontColor(option)}
+						selected={formState.fontColor}
+						onChange={(option) => handleChange('fontColor', option)}
 						title='Цвет шрифта'
 					/>
 					<Separator></Separator>
 					<Select
 						options={backgroundColors}
-						selected={selectedBackgroundColor}
-						onChange={(option) => setSelectedBackgroundColor(option)}
+						selected={formState.backgroundColor}
+						onChange={(option) => handleChange('backgroundColor', option)}
 						title='Цвет фона'
 					/>
 					<Select
 						options={contentWidthArr}
-						selected={selectedContentWidth}
-						onChange={(option) => setSelectedContentWidth(option)}
+						selected={formState.contentWidth}
+						onChange={(option) => handleChange('contentWidth', option)}
 						title='Ширина контента'
 					/>
 					<div className={articleStyles.bottomContainer}>
 						<Button title='Сбросить' type='reset' onClick={resetForm} />
-						<Button
-							title='Применить'
-							type='button'
-							onClick={applyChangesHandler}
-						/>
+						<Button title='Применить' type='submit' />
 					</div>
 				</form>
 			</aside>
